@@ -1,6 +1,8 @@
 #pragma once
 #include <array>
 
+enum class Player { P1, P2 };
+
 class Board {
 public:
     Board() {
@@ -8,6 +10,10 @@ public:
         slots_[P1_RUMAH_INDEX] = 0;
         slots_[P2_RUMAH_INDEX] = 0;
     }
+
+    int getKampung(int i) const;
+    int getRumah(Player p) const;
+    int getTotalSeeds() const;
 
 private:
     std::array<int, 16> slots_{};
