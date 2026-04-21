@@ -16,3 +16,13 @@ int Board::getRumah(Player p) const {
 int Board::getTotalSeeds() const {
     return std::accumulate(slots_.begin(), slots_.end(), 0);
 }
+
+bool Board::isGameOver() const {
+    for (int i = 0; i < 16; ++i) {
+        if (i == P1_RUMAH_INDEX || i == P2_RUMAH_INDEX)
+            continue;
+        if (slots_[i] != 0)
+            return false;
+    }
+    return true;
+}

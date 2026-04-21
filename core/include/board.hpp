@@ -14,6 +14,7 @@ public:
     int getKampung(int i) const;
     int getRumah(Player p) const;
     int getTotalSeeds() const;
+    bool isGameOver() const;
 
 private:
     std::array<int, 16> slots_{};
