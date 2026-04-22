@@ -3,6 +3,11 @@
 
 enum class Player { P1, P2 };
 
+struct MoveResult {
+    bool extraTurn{false};
+    bool capture{false};
+};
+
 class Board {
 public:
     Board() {
@@ -15,7 +20,8 @@ public:
     int getRumah(Player p) const;
     int getTotalSeeds() const;
     bool isGameOver() const;
-    void makeMove(int hole, Player p);
+    MoveResult makeMove(int hole, Player p);
+    void _setSlot(int i, int v);
 
 private:
     std::array<int, 16> slots_{};

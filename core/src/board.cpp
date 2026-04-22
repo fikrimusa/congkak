@@ -27,7 +27,9 @@ bool Board::isGameOver() const {
     return true;
 }
 
-void Board::makeMove(int hole, Player p) {
+MoveResult Board::makeMove(int hole, Player p) {
+
+    MoveResult result;
 
     int seeds = slots_[hole];
     slots_[hole] = 0;
@@ -42,10 +44,40 @@ void Board::makeMove(int hole, Player p) {
         }
     }
 
+    int lastSlot = -1;
+
     while (seeds > 0) {
         pos = (pos + 1) % 15;
         int slot = sowTable[pos];
         slots_[slot] += 1;
+        lastSlot = slot;
         seeds -= 1;
     }
+
+    if ((p == Player::P1 && lastSlot == P1_RUMAH_INDEX) ||
+        (p == Player::P2 && lastSlot == P2_RUMAH_INDEX)) {
+        result.extraTurn = true;
+    }
+
+    bool onOwnSide = (p == Player::P1 && lastSlot >= 0 && lastSlot <= 6) ||
+                     (p == Player::P2 && lastSlot >= 8 && lastSlot <= 14);
+
+    bool wasEmpty = slots_[lastSlot] == 1;
+    bool oppHasSeeds = slots_[14 - lastSlot] > 0;
+
+    if (onOwnSide && wasEmpty && oppHasSeeds) {
+        int ownRumah = (p == Player::P1) ? P1_RUMAH_INDEX : P2_RUMAH_INDEX;
+
+        slots_[ownRumah] += slots_[lastSlot] + slots_[14 - lastSlot];
+        slots_[lastSlot] = 0;
+        slots_[14 - lastSlot] = 0;
+
+        result.capture = true;
+    }
+
+    return result;
+}
+
+void Board::_setSlot(int i, int v) {
+    slots_[i] = v;
 }
