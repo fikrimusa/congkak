@@ -1,9 +1,111 @@
 #include "board.hpp"
 #include "game.hpp"
 
+#include <iomanip>
 #include <iostream>
+#include <limits>
+#include <string>
 
-int main() {
+namespace {
+
+std::string playerName(Player p) {
+    return (p == Player::P1) ? "P1" : "P2";
+}
+
+// Mirror mapping: user types 1-7 meaning "my kampung in sowing order, first to last".
+//   P1: 1 -> slot 0, 7 -> slot 6
+//   P2: 1 -> slot 14, 7 -> slot 8
+int toSlot(Player p, int input) {
+    if (p == Player::P1) return input - 1;
+    return 15 - input;
+}
+
+void renderBoard(const Board& b) {
+    std::cout << "\n";
+
+    // P2 row (top): slots 14..8 left-to-right
+    std::cout << "          ";
+    for (int i = 14; i >= 8; --i) {
+        std::cout << "[" << std::setw(2) << b.getKampung(i) << "] ";
+    }
+    std::cout << "\n";
+
+    // P2 labels 1..7 (left-to-right matches P2's sowing order from their seat)
+    std::cout << "          ";
+    for (int n = 1; n <= 7; ++n) {
+        std::cout << "  " << n << "  ";
+    }
+    std::cout << "\n";
+
+    // Rumah row: P2's rumah on the left (west), P1's on the right (east)
+    std::cout << "P2: " << std::setw(2) << b.getRumah(Player::P2);
+    std::cout << "                                   ";
+    std::cout << std::setw(2) << b.getRumah(Player::P1) << " :P1\n";
+
+    // P1 labels 1..7
+    std::cout << "          ";
+    for (int n = 1; n <= 7; ++n) {
+        std::cout << "  " << n << "  ";
+    }
+    std::cout << "\n";
+
+    // P1 row (bottom): slots 0..6 left-to-right
+    std::cout << "          ";
+    for (int i = 0; i <= 6; ++i) {
+        std::cout << "[" << std::setw(2) << b.getKampung(i) << "] ";
+    }
+    std::cout << "\n\n";
+}
+
+void announceWinner(const Board& b) {
+    int p1 = b.getRumah(Player::P1);
+    int p2 = b.getRumah(Player::P2);
+    std::cout << "=== Game Over ===\n";
+    std::cout << "P1 rumah: " << p1 << "\n";
+    std::cout << "P2 rumah: " << p2 << "\n";
+    if (p1 > p2)      std::cout << "P1 wins!\n";
+    else if (p2 > p1) std::cout << "P2 wins!\n";
+    else              std::cout << "Draw.\n";
+}
+
+void runGame() {
+    Game game;
+    std::cout << "=== Congkak ===\n";
+    std::cout << "Each turn, pick 1-7 (1 = your first kampung in sowing order).\n";
+
+    while (!game.isGameOver()) {
+        renderBoard(game.board());
+        Player p = game.currentPlayer();
+        std::cout << playerName(p) << "'s turn. Pick hole (1-7): ";
+
+        int input;
+        if (!(std::cin >> input)) {
+            if (std::cin.eof()) {
+                std::cout << "\nEOF - exiting.\n";
+                return;
+            }
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            std::cout << "Not a number. Try again.\n";
+            continue;
+        }
+        if (input < 1 || input > 7) {
+            std::cout << "Out of range. Pick 1-7.\n";
+            continue;
+        }
+
+        int slot = toSlot(p, input);
+        if (!game.playMove(slot)) {
+            std::cout << "Invalid move (empty kampung). Try again.\n";
+            continue;
+        }
+    }
+
+    renderBoard(game.board());
+    announceWinner(game.board());
+}
+
+void runSmokeTests() {
     std::cout << std::boolalpha;
 
     // ===== Board smoke tests =====
@@ -45,52 +147,36 @@ int main() {
     std::cout << "  Total: " << b3.getTotalSeeds() << " (expect 85)\n";
 
     // ===== Game smoke tests =====
-
     std::cout << "\n--- Game smoke tests ---\n";
 
-    // Test 1: fresh Game state
     {
         Game g;
         std::cout << "Fresh Game:\n";
-        std::cout << "  currentPlayer P1? " << (g.currentPlayer() == Player::P1)
-                  << " (expect true)\n";
+        std::cout << "  currentPlayer P1? " << (g.currentPlayer() == Player::P1) << " (expect true)\n";
         std::cout << "  isGameOver: " << g.isGameOver() << " (expect false)\n";
         std::cout << "  K0 seeds: " << g.board().getKampung(0) << " (expect 7)\n";
     }
-
-    // Test 2: valid move, no extra turn → flip to P2
-    // P1 plays K2 (7 seeds) → sows K3..K6,R1,K8,K9; last slot K9 (kampung, not rumah)
     {
         Game g;
         bool ok = g.playMove(2);
         std::cout << "P1 plays K2 (no extra turn):\n";
         std::cout << "  playMove: " << ok << " (expect true)\n";
-        std::cout << "  currentPlayer P2? " << (g.currentPlayer() == Player::P2)
-                  << " (expect true)\n";
+        std::cout << "  currentPlayer P2? " << (g.currentPlayer() == Player::P2) << " (expect true)\n";
     }
-
-    // Test 3: extra turn → player stays P1
-    // P1 plays K0 (7 seeds) → last slot lands in R1
     {
         Game g;
         bool ok = g.playMove(0);
         std::cout << "P1 plays K0 (extra turn):\n";
         std::cout << "  playMove: " << ok << " (expect true)\n";
-        std::cout << "  currentPlayer P1? " << (g.currentPlayer() == Player::P1)
-                  << " (expect true)\n";
+        std::cout << "  currentPlayer P1? " << (g.currentPlayer() == Player::P1) << " (expect true)\n";
     }
-
-    // Test 4: invalid — opponent's side
     {
         Game g;
         bool ok = g.playMove(8);
         std::cout << "P1 plays K8 (opponent's side):\n";
         std::cout << "  playMove: " << ok << " (expect false)\n";
-        std::cout << "  currentPlayer P1? " << (g.currentPlayer() == Player::P1)
-                  << " (expect true, unchanged)\n";
+        std::cout << "  currentPlayer P1? " << (g.currentPlayer() == Player::P1) << " (expect true, unchanged)\n";
     }
-
-    // Test 5: invalid — rumah indices and out-of-range
     {
         Game g;
         std::cout << "P1 plays rumah/out-of-range:\n";
@@ -98,38 +184,36 @@ int main() {
         std::cout << "  playMove(15): " << g.playMove(15) << " (expect false)\n";
         std::cout << "  playMove(-1): " << g.playMove(-1) << " (expect false)\n";
         std::cout << "  playMove(99): " << g.playMove(99) << " (expect false)\n";
-        std::cout << "  currentPlayer P1? " << (g.currentPlayer() == Player::P1)
-                  << " (expect true, unchanged)\n";
+        std::cout << "  currentPlayer P1? " << (g.currentPlayer() == Player::P1) << " (expect true, unchanged)\n";
     }
-
-    // Test 6: invalid — empty kampung
     {
         Game g;
         g._board()._setSlot(0, 0);
         bool ok = g.playMove(0);
         std::cout << "P1 plays empty K0:\n";
         std::cout << "  playMove: " << ok << " (expect false)\n";
-        std::cout << "  currentPlayer P1? " << (g.currentPlayer() == Player::P1)
-                  << " (expect true, unchanged)\n";
+        std::cout << "  currentPlayer P1? " << (g.currentPlayer() == Player::P1) << " (expect true, unchanged)\n";
     }
-
-    // Test 7: revival skip
-    // Craft: only K0 has 1 seed; P1 K1..K6 empty; P2 side empty; rumahs 0.
-    // P1 plays K0 → sows 1 seed to K1. No extra turn.
-    // Phase 3a flips to P2. Phase 3b: P2 side empty, game not over → flip back to P1.
     {
         Game g;
         for (int i = 0; i < 16; ++i) g._board()._setSlot(i, 0);
         g._board()._setSlot(0, 1);
-
         bool ok = g.playMove(0);
         std::cout << "Revival skip (P2 side empty, P1 plays K0):\n";
         std::cout << "  playMove: " << ok << " (expect true)\n";
-        std::cout << "  currentPlayer P1? " << (g.currentPlayer() == Player::P1)
-                  << " (expect true, revival fired)\n";
+        std::cout << "  currentPlayer P1? " << (g.currentPlayer() == Player::P1) << " (expect true, revival fired)\n";
         std::cout << "  K0: " << g.board().getKampung(0) << " (expect 0)\n";
         std::cout << "  K1: " << g.board().getKampung(1) << " (expect 1)\n";
     }
+}
 
+}  // namespace
+
+int main(int argc, char** argv) {
+    if (argc > 1 && std::string(argv[1]) == "--test") {
+        runSmokeTests();
+        return 0;
+    }
+    runGame();
     return 0;
 }
