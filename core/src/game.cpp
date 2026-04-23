@@ -32,6 +32,10 @@ const Board& Game::board() const {
     return board_;
 }
 
+Board& Game::_board() {
+    return board_;
+}
+
 bool Game::isGameOver() const {
     return board_.isGameOver();
 }

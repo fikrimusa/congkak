@@ -8,6 +8,7 @@ public:
     Player currentPlayer() const;
     bool isGameOver() const;
     const Board& board() const;
+    Board& _board();
 
 private:
     void flipPlayer();
